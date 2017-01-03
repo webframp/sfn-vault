@@ -62,6 +62,31 @@ Configuration.new
 end
 ~~~
 
+The vault read callback will look for `VAULT_ADDR` and `VAULT_TOKEN` environment
+variables by default, or you can set `vault_addr` and `vault_token` in the vault
+section of your configuration. It is generally best to set these as environment
+variables since the `.sfn `file should be checked into version control.
+
+The following additional parameters can be adjusted by adding a `vault` section
+to your `.sfn` config:
+
+~~~ruby
+Configuration.new
+  vault do
+    vault_addr 'http://127.0.0.1:8200'
+    vault_token 'vault-access-token'
+    # globally disable vault read callback
+    status 'disabled'
+    # customize the name of cache file
+    cache_file '.sfn-vault'
+    # customize vault api client retries
+    retries 5
+    # number of seconds to wait for iam creds to be ready
+    iam_delay 15
+  end
+end
+~~~
+
 # Info
 
 * Repository: https://github.com/webframp/sfn-vault

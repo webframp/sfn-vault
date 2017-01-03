@@ -111,7 +111,8 @@ module Sfn
               # without the sleep the credentials are not ready
               ui.info "Sleeping 30s for first time credentials system wide activation"
               # this is arbitrary
-              sleep(30)
+              timeout = config.fetch(:vault, :iam_delay, 15)
+              sleep(timeout)
               api.connection.data[:vault_lease_id] = secret.lease_id # maybe unused?
               api.connection.data[:vault_lease_expiration] = Time.now.to_i + secret.lease_duration
               # update keys in api connection
