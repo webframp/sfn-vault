@@ -18,7 +18,7 @@ project's Gemfile:
 
 ~~~ruby
 group :sfn do
-  gem 'sfn-vault
+  gem 'sfn-vault'
 end
 ~~~
 
