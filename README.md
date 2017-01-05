@@ -32,8 +32,8 @@ configuration file. First the callback must be enabled:
 ~~~ruby
 Configuration.new do
   callbacks do
-    require ['sfn-vault]
-    default ['vault_read]
+    require ['sfn-vault']
+    default ['vault_read']
   end
 end
 ~~~
