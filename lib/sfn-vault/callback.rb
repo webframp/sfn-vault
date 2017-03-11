@@ -108,14 +108,7 @@ module Sfn
         read_path = config.fetch(:credentials, :vault_read_path, "aws/creds/deploy") # save this value?
         ui.debug "Vault read path is #{read_path}"
         retries = config.fetch(:vault, :retries, 5)
-
-        ui.debug "Trying logical read"
-        client.logical.read(read_path)
-        # credential = client.with_retries(Exception, attempts: retries) do |attempt, e|
-        #   ui.debug "Vault attempting to get credential with retries: #{attempt} of #{retries}"
-        #   raise Exception
-        # end
-        ui.debug "Vault retrieved credential: #{credential}"
+        credential = client.logical.read(read_path)
         credential
       end
 
@@ -137,14 +130,12 @@ module Sfn
             values[:vault_lease_expiration] = 0
           end
           if(expired?(values[:vault_lease_expiration]))
-            ui.debug "No credential or lease expired"
             begin
               secret = vault_read
-              ui.debug "vault lease: #{secret.lease_id}"
               # without the sleep the credentials are not ready
-              ui.info "Sleeping 30s for first time credentials system wide activation"
               # this is arbitrary
-              timeout = config.fetch(:vault, :iam_delay, 15)
+              timeout = config.fetch(:vault, :iam_delay, 30)
+              ui.info "Sleeping #{timeout}s for first time credentials system wide activation"
               sleep(timeout)
               api.connection.data[:vault_lease_id] = secret.lease_id # maybe unused?
               api.connection.data[:vault_lease_expiration] = Time.now.to_i + secret.lease_duration
