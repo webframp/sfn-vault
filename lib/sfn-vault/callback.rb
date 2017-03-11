@@ -17,21 +17,17 @@ module Sfn
       # Inject credentials read from vault path
       # into API provider configuration
       def after_config(*_)
-        ui.debug "Entering #{__callee__}"
         # if credentials block contains vault_read_path
         if(enabled? && config.fetch(:credentials, :vault_read_path))
-          ui.debug "attempting to load stored session"
           load_stored_session
         end
       end
 
       # Store session credentials until lease expires
       def after(*_)
-        ui.debug "Entering #{__callee__}"
         if(enabled?)
           if(config.fetch(:credentials, :vault_read_path) && api.connection.aws_region)
             path = cache_file
-            ui.debug "Vault storing credentials to #{path}"
             FileUtils.touch(path)
             File.chmod(0600, path)
             values = load_stored_values(path)
@@ -64,7 +60,6 @@ module Sfn
 
       def vault_addr
         address = config.fetch(:vault, :vault_addr, ENV['VAULT_ADDR'])
-        ui.debug "Entering #{__callee__}"
         if address.nil?
           ui.error 'Set vault_addr in .sfn or VAULT_ADDR in environment'
           exit
@@ -75,7 +70,6 @@ module Sfn
 
       def vault_token
         token = config.fetch(:vault, :vault_token, ENV['VAULT_TOKEN'])
-        ui.debug "Entering #{__callee__}"
         if token.nil?
           ui.error 'Set :vault_token in .sfn or VAULT_TOKEN in environment'
           exit
@@ -86,27 +80,18 @@ module Sfn
 
       # @return [Object] of type Vault::Secret
       def vault_read
-        ui.debug "Entering #{__callee__}"
-        # BUG: OpenSSL::SSL::SSLError: SSL_connect returned=1 errno=0 state=error: certificate verify failed
         certs = SfnVault::CertificateStore.default_ssl_cert_store
-        ui.debug "read default cert store: #{certs}"
 
         conf = {
           address: vault_addr,
           token: vault_token,
         }
-
-        ui.debug "merging platform specific config"
         conf.merge!({ssl_ca_path: '/etc/ssl/certs'}) unless SfnVault::Platform.windows?
         conf.merge!({ssl_cert_store: certs}) if certs
 
-
-        ui.debug "have config hash"
         client = Vault::Client.new(conf)
-        ui.debug "have vault client"
-        ui.debug "Vault client is #{client}"
+        ui.debug "Have Vault client, configured with: #{client.options}"
         read_path = config.fetch(:credentials, :vault_read_path, "aws/creds/deploy") # save this value?
-        ui.debug "Vault read path is #{read_path}"
         retries = config.fetch(:vault, :retries, 5)
         credential = client.logical.read(read_path)
         credential
@@ -116,9 +101,6 @@ module Sfn
       # or read retrieve with Vault client
       # @return [TrueClass, FalseClass]
       def load_stored_session
-        # require 'pry'
-        # binding.pry
-        ui.debug "Entering #{__callee__}"
         path = cache_file
         FileUtils.touch(path)
         if(File.exist?(path))
