@@ -3,6 +3,8 @@
 Provides a mechanism to read dynamic credentials for use with AWS Orchestration
 APIs from a [Vault](https://www.vaultproject.io/intro/getting-started/dynamic-secrets.html) secret backend.
 
+**This is early alpha quality code**
+
 Currently supported cloud providers:
 
 * AWS
