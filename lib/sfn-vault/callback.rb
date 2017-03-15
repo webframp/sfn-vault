@@ -5,6 +5,8 @@ module Sfn
   class Callback
     class VaultRead < Callback
 
+      include SfnVault::Utils
+
       # Cache credentials for re-use to prevent re-generation of temporary
       # credentials on every command request.
       VAULT_CACHED_ITEMS = [
@@ -55,44 +57,14 @@ module Sfn
       # @return [TrueClass, FalseClass]
       # check lease is just: time.now greater than lease expires?
       def expired?(expiration)
-        Time.now.to_i > expiration
-      end
-
-      def vault_addr
-        address = config.fetch(:vault, :vault_addr, ENV['VAULT_ADDR'])
-        if address.nil?
-          ui.error 'Set vault_addr in .sfn or VAULT_ADDR in environment'
-          exit
-        end
-        ui.debug "Vault address is #{address}"
-        address
-      end
-
-      def vault_token
-        token = config.fetch(:vault, :vault_token, ENV['VAULT_TOKEN'])
-        if token.nil?
-          ui.error 'Set :vault_token in .sfn or VAULT_TOKEN in environment'
-          exit
-        end
-        ui.debug "Vault token is #{token}"
-        token
+        Time.now.to_i >= expiration
       end
 
       # @return [Object] of type Vault::Secret
       def vault_read
-        certs = SfnVault::CertificateStore.default_ssl_cert_store
-
-        conf = {
-          address: vault_addr,
-          token: vault_token,
-        }
-        conf.merge!({ssl_ca_path: '/etc/ssl/certs'}) unless SfnVault::Platform.windows?
-        conf.merge!({ssl_cert_store: certs}) if certs
-
-        client = Vault::Client.new(conf)
+        client = vault_client
         ui.debug "Have Vault client, configured with: #{client.options}"
         read_path = config.fetch(:credentials, :vault_read_path, "aws/creds/deploy") # save this value?
-        retries = config.fetch(:vault, :retries, 5)
         credential = client.logical.read(read_path)
         credential
       end
@@ -107,6 +79,11 @@ module Sfn
           values = load_stored_values(path)
           VAULT_CACHED_ITEMS.each do |key|
             api.connection.data[key] = values[key]
+            if [:aws_access_key_id, :aws_secret_access_key].member?(key)
+              ui.debug "Updating environment #{key} with #{values[key]}"
+              # also update environment for this process
+              ENV[key.to_s] = values[key]
+            end
           end
           if values[:vault_lease_expiration].nil?
             values[:vault_lease_expiration] = 0
