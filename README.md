@@ -3,6 +3,8 @@
 Provides a mechanism to read dynamic credentials for use with AWS Orchestration
 APIs from a [Vault](https://www.vaultproject.io/intro/getting-started/dynamic-secrets.html) secret backend.
 
+**This is early alpha quality code**
+
 Currently supported cloud providers:
 
 * AWS
@@ -18,7 +20,7 @@ project's Gemfile:
 
 ~~~ruby
 group :sfn do
-  gem 'sfn-vault
+  gem 'sfn-vault'
 end
 ~~~
 
@@ -32,8 +34,8 @@ configuration file. First the callback must be enabled:
 ~~~ruby
 Configuration.new do
   callbacks do
-    require ['sfn-vault]
-    default ['vault_read]
+    require ['sfn-vault']
+    default ['vault_read']
   end
 end
 ~~~
