@@ -1,9 +1,12 @@
 require 'sfn-parameters'
+require 'securerandom'
+require 'vault'
 
 # Modeled after the Assume Role callback
 module Sfn
   class Callback
     class VaultRead < Callback
+
 
       include SfnVault::Utils
 
@@ -16,10 +19,91 @@ module Sfn
         :aws_secret_access_key
       ]
 
-      # Inject credentials read from vault path
-      # into API provider configuration
+      def template(*args)
+        # search for all parameters of type 'Vault::Generic::Secret'
+        # 1. use the sparkleformation instance to get at the parameter hash,
+        config[:parameters] ||= Smash.new
+        stack = args.first[:sparkle_stack]
+        # 2. find names for things you want,
+        pseudo_parameters(stack).each do |param|
+          param_path = vault_path_name(args, param)
+          ui.debug "Using #{param_path} for saved parameter"
+          # check if already saved in vault
+          # Save the secret unless one already exists at the defined path
+          client = vault_client
+          unless client.logical.read(param_path)
+            ui.info "Vault: No pre-existing value for parameter #{param} saving new secret"
+            client.logical.write(param_path, value: random_secret)
+          end
+          # Read saved secret back from Vault and update parameters config
+          # 3. set param into config
+          config[:parameters][param] = client.logical.read(param_path).data[:value]
+          # 4. update type in template and that should do it
+          stack.compile.parameters.set!(param).type 'String'
+        end
+      end
+
+      # Use SecureRandom to generate a suitable password
+      # Length is configurable by setting `pseudo_parameter_length` in the vault
+      # section of the sfn config
+      #
+      # @return [String] The generated string
+      def random_secret
+        SecureRandom.base64(config.fetch(:vault, :pseudo_parameter_length, 15))
+      end
+
+      # Build the path where generated secrets can be saved in Vault
+      # This will use the value of `:parameter_path` from the config if set. If
+      # unset it will attempt to build a type of standardized path based on the
+      # combined value any stack 'Project' tag and Stack name.
+      # Project will fallback to 'SparkleFormation' if unset
+      #
+      # @param args [Array] Array of args passed to the sfn instance
+      # @param parameter [String] Template parameter to save value for in vault
+      # @return [String] String value or stack name if available or default to template name
+      def vault_path_name(args, parameter)
+        return config.fetch(:vault, :pseudo_parameter_path, nil) if config.fetch(:vault, :pseudo_parameter_path, nil)
+        # If we have a stack name use it, otherwise try to get from env and fallback to just template name
+        stack_name = args.first[:stack_name].nil? ? ENV.fetch('STACK_NAME', stack.name).to_s : args.first[:stack_name]
+        project = config[:options][:tags].fetch('Project', 'SparkleFormation')
+
+        # When running in a detectable CI environment assume that we have rights to save a generic secret
+        vault_path = if ci_environment?
+                       #  write to vault at generic path
+                       "/secret/#{project}/#{stack_name}/#{parameter}"
+                     else
+                       # or for local dev use /cubbyhole/Parameter
+                       "/cubbyhole/#{parameter}"
+                     end
+        vault_path
+      end
+
+      # Lookup all pseudo parameters in the template
+      #
+      # @param stack [SparkleFormation] An instance of the stack template
+      # @param parameter [String] The string value of the pseudo type to lookup
+      # @return [Array] Array of parameter names matching the pseudo type
+      def pseudo_parameters(stack, parameter: 'Vault::Generic::Secret')
+        stack.dump.fetch('Parameters', {}).map{|k,v| k if v['Type'] == parameter}.compact
+      end
+
+
+      # Check if we are running in any detectable CI type environments
+      #
+      # @return [TrueClass, FalseClass]
+      def ci_environment?
+        # check for any ci system env variables
+        return true if ENV['GO_PIPELINE_NAME']
+        return true if ENV['CI']
+        false
+      end
+
       def after_config(*_)
+        # Inject credentials read from configured vault path
+        # into API provider configuration
         # if credentials block contains vault_read_path
+        # TODO: this could be done earlier if at all possible so credentials
+        # struct does not need the aws config
         if(enabled? && config.fetch(:credentials, :vault_read_path))
           load_stored_session
         end
@@ -48,7 +132,7 @@ module Sfn
         config.fetch(:vault, :status, 'enabled').to_s == 'enabled'
       end
 
-      # @return String path
+      # @return [String ]path
       def cache_file
         config.fetch(:vault, :cache_file, '.sfn-vault')
       end
