@@ -24,6 +24,55 @@ group :sfn do
 end
 ~~~
 
+### Vault Pseudo Parameters
+
+This callback provides a method to set and store template parameters in a
+configured Vault instance. This is implemented by adding special handling for a
+custom parameter 'type'. Cloudformation parameters can have
+option
+[AWS-Specific Parameter Types](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html?shortFooter=true#aws-specific-parameter-types).
+This callback looks for a special type named `Vault::Generic::Secret` and will
+dynamically get or set a value from vault for parameters with this type, then
+set the actual type to 'String' which can be understood by AWS.
+
+Generally these should be set as `NoEcho` parameters and a dsl helper method is
+provided to generate this type of named parameter.
+
+Example usage in template:
+~~~ruby
+vault_parameter!(:secret_value)
+~~~
+
+Will result in a template with the following parameter defined:
+~~~json
+"SecretValue": {
+  "NoEcho": true,
+  "Description": "Generated secret automatically stored in Vault",
+  "Type": "String"
+}
+~~~
+
+The value will be stored in vault and retrieved dynamically at stack creation
+time. If the `sfn` command is running in a CI environment, where the `CI`
+environment variable is set, then the callback will attempt to use the default
+generic secret backed path in a stack specific location.
+
+For local development needs or if this environment variable is undetected the
+vault cubbyhole is used.
+
+The path is configurable by using the `:pseudo_parameter_path` in the sfn config:
+
+~~~ruby
+...
+vault do
+  pseudo_parameter_path "/secret/aws_secrets"
+end
+~~~
+
+By default 15 character base64 strings are generated using SecureRandom. The
+length can be adjusted by setting `:pseudo_parameter_length` in the config to
+any integer value.
+
 ### Vault Read
 
 #### Enable
@@ -43,7 +92,7 @@ end
 #### Configuration
 
 The default read path is `aws/creds/deploy` and will be used without
-configuration but it is customizable. 
+configuration but it is customizable.
 
 Vault read configuration is controlled within the `.sfn` file:
 
