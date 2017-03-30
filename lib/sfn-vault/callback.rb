@@ -53,7 +53,7 @@ module Sfn
       end
 
       # Build the path where generated secrets can be saved in Vault
-      # This will use the value of `:parameter_path` from the config if set. If
+      # This will use the value of `:pseudo_parameter_path` from the config if set. If
       # unset it will attempt to build a type of standardized path based on the
       # combined value any stack 'Project' tag and Stack name.
       # Project will fallback to 'SparkleFormation' if unset
