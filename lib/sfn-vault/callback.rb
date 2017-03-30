@@ -62,7 +62,8 @@ module Sfn
       # @param parameter [String] Template parameter to save value for in vault
       # @return [String] String value or stack name if available or default to template name
       def vault_path_name(args, parameter)
-        return config.get(:vault, :pseudo_parameter_path) if config.get(:vault, :pseudo_parameter_path)
+        pref = config.get(:vault, :pseudo_parameter_path)
+        base = pref.nil? ?  "secret" : pref
         # If we have a stack name use it, otherwise try to get from env and fallback to just template name
         stack = args.first[:sparkle_stack]
         stack_name = args.first[:stack_name].nil? ? ENV.fetch('STACK_NAME', stack.name).to_s : args.first[:stack_name]
@@ -71,7 +72,7 @@ module Sfn
         # When running in a detectable CI environment assume that we have rights to save a generic secret
         vault_path = if ci_environment?
                        #  write to vault at generic path
-                       "/secret/#{project}/#{stack_name}/#{parameter}"
+                       "/#{base}/#{project}/#{stack_name}/#{parameter}"
                      else
                        # or for local dev use /cubbyhole/Parameter
                        "/cubbyhole/#{parameter}"
