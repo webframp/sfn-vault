@@ -62,7 +62,7 @@ module Sfn
       # @param parameter [String] Template parameter to save value for in vault
       # @return [String] String value or stack name if available or default to template name
       def vault_path_name(args, parameter)
-        return config.fetch(:vault, :pseudo_parameter_path, nil) if config.fetch(:vault, :pseudo_parameter_path, nil)
+        return config.get(:vault, :pseudo_parameter_path) if config.get(:vault, :pseudo_parameter_path)
         # If we have a stack name use it, otherwise try to get from env and fallback to just template name
         stack_name = args.first[:stack_name].nil? ? ENV.fetch('STACK_NAME', stack.name).to_s : args.first[:stack_name]
         project = config[:options][:tags].fetch('Project', 'SparkleFormation')
