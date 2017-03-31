@@ -11,7 +11,7 @@ Gem::Specification.new do |s|
   s.license = 'Apache-2.0'
   s.require_path = 'lib'
   s.add_dependency 'sfn', '>= 3.0', '< 4.0'
-  s.add_dependency 'vault', '~> 0.7.3'
+  s.add_dependency 'vault', '~> 0.9.0'
   s.add_dependency 'ffi', '~> 1.9.14'
   s.add_development_dependency 'pry', '~> 0.10.4'
   s.add_development_dependency 'pry-byebug', '~> 3.4', '>= 3.4.2'
