@@ -1,7 +1,10 @@
-# SparkleFormation Vault Read Callback
+# SparkleFormation Vault Callback
 
 Provides a mechanism to read dynamic credentials for use with AWS Orchestration
 APIs from a [Vault](https://www.vaultproject.io/intro/getting-started/dynamic-secrets.html) secret backend.
+
+Also provides a method to set and store template parameters in a configured
+Vault instance. This is implemented by handling a custom parameter 'type'.
 
 **This is early alpha quality code**
 
@@ -43,7 +46,7 @@ end
 #### Configuration
 
 The default read path is `aws/creds/deploy` and will be used without
-configuration but it is customizable. 
+configuration but it is customizable.
 
 Vault read configuration is controlled within the `.sfn` file:
 
@@ -88,6 +91,82 @@ Configuration.new
   end
 end
 ~~~
+
+### Vault Pseudo Parameters
+Cloudformation parameters can have
+optional
+[AWS-Specific Parameter Types](http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/parameters-section-structure.html?shortFooter=true#aws-specific-parameter-types).
+In a similar way this callback looks for a special parameter type named
+`Vault::Generic::Secret` and will dynamically get or set a key value from Vault.
+The key will be named to match the parameters name. Then the parameter type in the
+template is changed to 'String' which can be understood by AWS.
+
+Generally these should be set as `NoEcho` parameters and a dsl helper method is
+provided to generate this type of named parameter.
+
+Example usage in template:
+~~~ruby
+vault_parameter!(:secret_value)
+~~~
+
+Will result in a template with the following parameter defined:
+~~~json
+"Parameters": {
+  "SecretValue": {
+    "NoEcho": true,
+    "Description": "Generated secret automatically stored in Vault",
+    "Type": "String"
+  }
+}
+~~~
+
+And the value of this parameter will be stored and retrieved from a stack
+specific Vault key by default named like:
+
+~~~
+cubbyhole/SparkleFormation/template/SecretValue
+~~~
+
+In this example the template is named 'template', but this will be replaced with
+the stack name during create/update operations.
+
+The value will be stored in vault and retrieved dynamically at stack creation
+time. If the `sfn` command is running in a CI environment, where the `CI`
+environment variable is set, then the callback will attempt to use the default
+generic secret backed path of `secret` in a stack specific location.
+
+For local development needs or if this environment variable is undetected the
+vault cubbyhole is used.
+
+The base path is also configurable by using the `:pseudo_parameter_path` in the
+sfn config. This replaces either `cubbyhole` or `secret` in the vault key used
+to store the parameter values. If configured this base path will override any CI
+environment detection and always be honored.
+
+~~~ruby
+...
+vault do
+  pseudo_parameter_path "/secret/aws_secrets"
+end
+~~~
+
+By default 15 character base64 strings are generated using SecureRandom. The
+length can be adjusted by setting `:pseudo_parameter_length` in the config to
+any integer value.
+
+# Known Issues
+
+If the iam_delay for the vault read behavior is not long enough the generated
+credentials will not be available for use and api requests will fail. As noted
+in
+the
+[Vault documentation](https://www.vaultproject.io/docs/secrets/aws/index.html#dynamic-iam-users) this
+is a limitation due to the eventually consistent behavior of IAM credentials. If
+you need the credentials to be immediately available, it is suggested to use
+the
+[STS Callback](http://www.sparkleformation.io/docs/sfn/callbacks.html#aws-assume-role) and
+set thestatus to `disabled` in the vault config section. This will disable the
+vault read behavior but still handles pseudo parameters.
 
 # Info
 
