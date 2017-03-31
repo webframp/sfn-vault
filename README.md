@@ -120,21 +120,28 @@ Will result in a template with the following parameter defined:
 }
 ~~~
 
-And the value of this parameter will be stored and retrieved from a Vault key by default named:
+And the value of this parameter will be stored and retrieved from a stack
+specific Vault key by default named like:
 
 ~~~
-cubbyhole/
+cubbyhole/SparkleFormation/template/SecretValue
 ~~~
+
+In this example the template is named 'template', but this will be replaced with
+the stack name during create/update operations.
 
 The value will be stored in vault and retrieved dynamically at stack creation
 time. If the `sfn` command is running in a CI environment, where the `CI`
 environment variable is set, then the callback will attempt to use the default
-generic secret backed path in a stack specific location.
+generic secret backed path of `secret` in a stack specific location.
 
 For local development needs or if this environment variable is undetected the
 vault cubbyhole is used.
 
-The path is configurable by using the `:pseudo_parameter_path` in the sfn config:
+The base path is also configurable by using the `:pseudo_parameter_path` in the
+sfn config. This replaces either `cubbyhole` or `secret` in the vault key used
+to store the parameter values. If configured this base path will override any CI
+environment detection and always be honored.
 
 ~~~ruby
 ...
@@ -146,6 +153,20 @@ end
 By default 15 character base64 strings are generated using SecureRandom. The
 length can be adjusted by setting `:pseudo_parameter_length` in the config to
 any integer value.
+
+# Known Issues
+
+If the iam_delay for the vault read behavior is not long enough the generated
+credentials will not be available for use and api requests will fail. As noted
+in
+the
+[Vault documentation](https://www.vaultproject.io/docs/secrets/aws/index.html#dynamic-iam-users) this
+is a limitation due to the eventually consistent behavior of IAM credentials. If
+you need the credentials to be immediately available, it is suggested to use
+the
+[STS Callback](http://www.sparkleformation.io/docs/sfn/callbacks.html#aws-assume-role) and
+set thestatus to `disabled` in the vault config section. This will disable the
+vault read behavior but still handles pseudo parameters.
 
 # Info
 
