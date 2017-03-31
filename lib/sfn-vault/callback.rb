@@ -25,12 +25,12 @@ module Sfn
         config[:parameters] ||= Smash.new
         stack = args.first[:sparkle_stack]
         # 2. find names for things you want,
+        client = vault_client
         pseudo_parameters(stack).each do |param|
           param_path = vault_path_name(args, param)
           ui.debug "Using #{param_path} for saved parameter"
           # check if already saved in vault
           # Save the secret unless one already exists at the defined path
-          client = vault_client
           unless client.logical.read(param_path)
             ui.info "Vault: No pre-existing value for parameter #{param} saving new secret"
             client.logical.write(param_path, value: random_secret)
@@ -79,7 +79,6 @@ module Sfn
                        # or for local dev use cubbyhole
                        File.join(base, project, stack_name, parameter)
                      end
-        ui.debug "Vault: generated parameter value will be stored at #{vault_path}"
         vault_path
       end
 
