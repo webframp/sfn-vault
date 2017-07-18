@@ -156,7 +156,9 @@ any integer value.
 
 # Known Issues
 
-If the iam_delay for the vault read behavior is not long enough the generated
+* Doesn't support parameters for nested stacks
+
+* If the iam_delay for the vault read behavior is not long enough the generated
 credentials will not be available for use and api requests will fail. As noted
 in
 the
