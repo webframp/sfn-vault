@@ -1,5 +1,8 @@
 # SparkleFormation Vault Callback
 
+## Repo Deprecated 
+[resolvers](https://github.com/sparkleformation/sfn-parameters/#extending-functionality-resolvers) in the parameter callback can probabl provide this functionality for you now.
+
 Provides a mechanism to read dynamic credentials for use with AWS Orchestration
 APIs from a [Vault](https://www.vaultproject.io/intro/getting-started/dynamic-secrets.html) secret backend.
 
